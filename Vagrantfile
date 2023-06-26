@@ -1,29 +1,29 @@
-Vagrant.configure("2") do |config|
+$setup_timezone = <<-SCRIPT
+echo "Setting up timezone data"
+SCRIPT
 
-	config.vm.define "testnode" do |define|
-  	define.ssh.insert_key = false
-  	define.vm.box = "ubuntu/bionic64"
-  	define.vm.hostname = "testnode"
-  	define.vm.network :private_network, ip: "192.168.56.11"
-  	# if you would like to use port forwarding, uncomment the line below
-  	# define.vm.network :forwarded_port, guest: 5432, host: "543#{n}"
- 
-  	define.vm.provider :virtualbox do |v|
-    	v.cpus = 1
-    	v.memory = 1024
-    	v.name = "testnode"
-  	end
- 
-    define.vm.provision :ansible do |ansible|
-      ansible.limit = "all"
-      ansible.playbook = "playbook.yaml"
- 
-      ansible.host_vars = {
-        "testnode" => {:connection_host => "192.168.56.11",
-                    	:node_id => 1,
-                    	:role => "primary" },
-      	}
-  	end
- 
-	end
+$setup_postgres_db = <<-'SCRIPT' 
+echo "Setting up PostgreSQL database" 
+sudo apt-get install wget ca-certificates
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main"> /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo dpkg --configure -a
+sudo apt-get update 
+export LANGUAGE=en_US.UTF-8
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+locale-gen en_US.UTF-8
+sudo dpkg-reconfigure locales
+sudo DEBIAN_FRONTEND=noninteractive apt install -y postgresql-8.4
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  
+  config.vm.box = "focal"
+  #config.vm.box_version = "6.1"
+  config.vm.provision :shell, inline: $setup_timezone
+
+  config.vm.define "postgres" do |postgres|
+    postgres.vm.provision :shell, inline: $setup_postgres_db
+  end
 end
